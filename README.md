@@ -17,7 +17,8 @@ This project implements a **Multi-Producer Multi-Consumer** system in Java using
 ## 📂 Project Structure  
 ```
 multi-producer-consumer-sync-java/
-│── README.md               
+│── README.md
+│── producerConsumer.java               
 ```
 
 

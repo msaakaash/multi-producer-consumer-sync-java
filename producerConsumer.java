@@ -1,8 +1,7 @@
-
 import java.util.LinkedList;
 import java.util.Queue;
 
-public class prod {
+public class Prod {
     public static void main(String[] args) {
         SharedBuffer buffer = new SharedBuffer(5);
 
@@ -15,6 +14,15 @@ public class prod {
         producer2.start();
         consumer1.start();
         consumer2.start();
+
+        try {
+            producer1.join();
+            producer2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        buffer.setProductionComplete(); // Notify consumers that production is complete
     }
 }
 
@@ -23,34 +31,55 @@ class SharedBuffer {
     private final int capacity;
     private int producedCount = 0;
     private final int totalItemsToProduce = 10; // 5 items per producer * 2 producers
+    private boolean productionComplete = false; // Flag to indicate when production is complete
 
     public SharedBuffer(int capacity) {
         this.capacity = capacity;
     }
 
-    public synchronized void produce(int item) throws InterruptedException {
-        while (buffer.size() == capacity) {
-            wait(); // Wait if buffer is full
+    // Producer method: Produces an item and adds it to the buffer
+    public synchronized void produce(int item) {
+        try {
+            while (buffer.size() == capacity) {
+                wait(); // Wait if the buffer is full
+            }
+            buffer.add(item);
+            producedCount++;
+            System.out.println(Thread.currentThread().getName() + " Produced: " + item);
+            displayBuffer();
+            notify(); // Notify one consumer that an item is available
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println(Thread.currentThread().getName() + " was interrupted while producing.");
         }
-        buffer.add(item);
-        producedCount++;
-        System.out.println(Thread.currentThread().getName() + " Produced: " + item);
-        displayBuffer();
-        notifyAll();
     }
 
-    public synchronized int consume() throws InterruptedException {
-        while (buffer.isEmpty() && producedCount < totalItemsToProduce) {
-            wait(); // Wait if buffer is empty
+    // Consumer method: Consumes an item from the buffer
+    public synchronized int consume() {
+        try {
+            while (buffer.isEmpty()) {
+                if (productionComplete && producedCount >= totalItemsToProduce) {
+                    return -1; // Stop consuming if production is complete
+                }
+                wait(); // Wait if the buffer is empty
+            }
+
+            int item = buffer.poll();
+            System.out.println(Thread.currentThread().getName() + " Consumed: " + item);
+            displayBuffer();
+            notify(); // Notify one producer that space is available
+            return item;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println(Thread.currentThread().getName() + " was interrupted while consuming.");
+            return -1;
         }
+    }
 
-        if (buffer.isEmpty()) return -1; // Stop consuming if production is complete
-
-        int item = buffer.poll();
-        System.out.println(Thread.currentThread().getName() + " Consumed: " + item);
-        displayBuffer(); // Display buffer after consuming an item
-        notifyAll(); // Notify producers
-        return item;
+    // Mark production as complete so consumers can stop waiting
+    public synchronized void setProductionComplete() {
+        productionComplete = true;
+        notifyAll(); // Notify all consumers waiting on an empty buffer
     }
 
     private synchronized void displayBuffer() {
@@ -77,7 +106,7 @@ class Producer implements Runnable {
             for (int i = 0; i < 5; i++) {
                 int item = id * 100 + i;
                 buffer.produce(item);
-                Thread.sleep((int) (Math.random() * 1000)); // Simulating production time
+                Thread.sleep((int) (Math.random() * 500)); // Simulating random production time
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -100,7 +129,7 @@ class Consumer implements Runnable {
             while (true) {
                 int item = buffer.consume();
                 if (item == -1) break; // Stop consuming if all items are produced
-                Thread.sleep((int) (Math.random() * 1000)); // Simulating consumption time
+                Thread.sleep((int) (Math.random() * 500)); // Simulating random consumption time
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

@@ -8,11 +8,14 @@
 This project implements a **Multi-Producer Multi-Consumer** system in Java using a **shared buffer** with proper synchronization techniques. Multiple producers generate data and multiple consumers process it while ensuring **thread safety** and preventing race conditions.
 
 
-## 🖥️ Usage  
-- The **producers** will generate data and add it to the buffer.
-- The **consumers** will retrieve data from the buffer and process it.
-- The system will ensure proper **synchronization** and **thread safety**.
+## Flow of Execution
 
+1. **Producers** start producing and adding items to the buffer.
+2. If the **buffer is full**, the producer **waits**.
+3. **Consumers** start consuming items from the buffer.
+4. If the **buffer is empty**, consumers **wait**.
+5. Once **all items are produced**, `setProductionComplete()` is called.
+6. **Consumers get notified** and, once they consume all items, they **stop**.
 
 ## 📂 Project Structure  
 ```
